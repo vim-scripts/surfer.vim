@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-tsurf.utils.misc
-~~~~~~~~~~~~~~~~
+surfer.utils.misc
+~~~~~~~~~~~~~~~~~
 
 This module defines various utilities.
 """

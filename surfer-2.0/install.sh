@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
-cd ./autoload/tsurf/ext
+cd ./autoload/surfer/ext
+rm -fR build search.so
 python setup.py build_ext --inplace
 rm -fR build

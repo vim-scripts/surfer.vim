@@ -1,7 +1,6 @@
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=4703
 
 
-Tag Surfer provides a tiny interface for fuzzy tag searches.
+Surfer provides nice user interface for code navigation built on top of Ctags.
 
-Go to https://github.com/gcmt/tag-surfer for a live example and
-a quick introduction to Tag Surfer.
+Go to https://github.com/gcmt/surfer.vim for a quick introduction to Surfer.

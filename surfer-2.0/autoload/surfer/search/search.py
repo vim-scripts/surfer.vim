@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-tsurf.utils.search
-~~~~~~~~~~~~~~~~~~
+surfer.search.search
+~~~~~~~~~~~~~~~~~~~~
 
-This module defines the search function used by the Finder class
-for searching tags that match the user search query.
+This module defines the matching function used for searching tags.
 """
 
 from __future__ import division
 
 
-def search(needle, haystack, smart_case):
+def match(needle, haystack, smart_case):
     """To search for `needle` in `haystack`.
 
     Returns a tuple of two elements: a number and another tuple.
@@ -18,8 +17,8 @@ def search(needle, haystack, smart_case):
     whereas the other tuple contains the positions where the match occurs in
     `haystack`.
 
-    If there are multiple matches, the one with the highest similarity
-    (lowest value) is returned.
+    If there are multiple matches, the one with the best similarity value
+    (the lowest value) is returned.
     """
     if not needle:
         return -1, tuple()
@@ -96,11 +95,12 @@ def search(needle, haystack, smart_case):
 
 
 def similarity(haystack_len, positions, boundaries_count):
-    """ To compute the similarity between two strings given `haystack` and the
-    positions where `needle` matches in `haystack`.
+    """ To compute the similarity between `haystack` and `needle` given the
+    length of `haystack` and the positions where `needle` matches in
+    `haystack`.
 
-    Returns a number that indicate the similarity between the two strings.
-    The lower it is, the more similar the two strings are.
+    Returns a number that measure the similarity betwee the two strings. The
+    lower this number is, the two strings are.
     """
     if not positions:
         return -1
@@ -121,8 +121,5 @@ def similarity(haystack_len, positions, boundaries_count):
                 diffs_sum += abs(positions[i]-positions[j])
                 n += 1
 
-    if n > 0:
-        return diffs_sum/n * (contiguous_sets + 1) / (boundaries_count + 1)
-    else:
-        # This branch is executed when len(positions) == 1
-        return positions[0] / (boundaries_count + 1)
+    compactness = diffs_sum/n if n > 0 else 0
+    return positions[0] + compactness + contiguous_sets - boundaries_count + 1

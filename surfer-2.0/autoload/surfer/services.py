@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-tsurf.services
-~~~~~~~~~~~~~~
+surfer.services
+~~~~~~~~~~~~~~~
 
-This module defines services used by any of the Tag Surfer components.
+This module defines services used by any of the Surfer components.
 """
 
 import os
 import vim
 
-from tsurf.utils import v
-from tsurf.utils import settings
+from surfer.utils import v
+from surfer.utils import settings
 
 
 class Services:
 
     def __init__(self, plug):
         self.plug = plug
-        self.curr_project = CurrentProjectService()
+        self.project = CurrentProjectService()
 
 
 class CurrentProjectService:
@@ -34,40 +34,40 @@ class CurrentProjectService:
         the current open buffer. If `autochdir` is off this may differ
         from the output of the `:pwd` command.
         """
-        files = []
         root = self.get_root()
-        if root:
-            cond1 = self.files_cache
-            cond2 = cond1 and not self.files_cache[0].startswith(root)
-            if not cond1 or cond2:
-                # Get all files for the current project. Note that the `glob()`
-                # function ignore everything that matches with any of the
-                # wildcards listed in the `wildignore` option.
-                # Note: the `glob()` function wants forward slashes even on
-                # Windows
-                expr = os.path.join(root, "**").replace("\\", "/")
-                files = vim.eval('glob("{}")'.format(expr)).split("\n")
-                self.files_cache = files
-            else:
-                files = self.files_cache
+        if not root:
+            return []
 
-        return files
+        if not self.files_cache:
+            # Get all files for the current project. Note that the `glob()`
+            # function ignore everything that matches with any of the
+            # wildcards listed in the `wildignore` option.
+            # Note: the `glob()` function wants forward slashes even on
+            # Windows
+            expr = os.path.join(root, "**").replace("\\", "/")
+            self.files_cache = vim.eval('glob("{}")'.format(expr)).split("\n")
+
+        return self.files_cache
 
     def get_root(self):
         """To return the current project root."""
         if self.custom_root:
             return self.custom_root
-
         if not self.root_cache:
-            root = self._find_project_root(v.cwd(),
+            self.root_cache = self._find_project_root(v.cwd(),
                 settings.get("root_markers"))
-            self.root_cache = root
-
         return self.root_cache
 
     def set_root(self, root):
         """To set a custom root for the current project."""
         self.custom_root = root
+
+    def update_project_root(self):
+        """To keep updated the project root whenever the user edits a buffer."""
+        bufname = v.bufname()
+        if bufname is None or not bufname.startswith(self.root_cache):
+            self.files_cache = []
+            self.root_cache = ""
 
     def _find_project_root(self, path, root_markers):
         """To find the the root of the current project.

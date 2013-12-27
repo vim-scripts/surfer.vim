@@ -1,0 +1,477 @@
+*surfer.txt* *surfer* *vim-surfer*
+
+
+                                   Surfer
+
+                                     ~
+
+                              Reference Manual
+
+
+==============================================================================
+CONTENTS                                                 *surfer-contents*
+
+
+        1. Intro ................................. |surfer-intro|
+        2. Usage ................................. |surfer-usage|
+        3. Commands .............................. |surfer-commands|
+        4. Options ............................... |surfer-options|
+        5. Appearance ............................ |surfer-appearance|
+        6. Languages support ..................... |surfer-languages-support|
+        7. Changelog ............................. |surfer-changelog|
+        8. About ................................. |surfer-about|
+        9. License ............................... |surfer-license|
+
+
+
+==============================================================================
+1. Intro                                                        *surfer-intro*
+
+
+This plugin provides a nice interface for navigating code built on top of Ctags.
+
+
+==============================================================================
+2. Usage                                                        *surfer-usage*
+
+To open Surfer execute the |Surf| command. As you type something, Surfer
+will show you a list of tags in the current session that match your query. You
+can interact with search results with the following keys.
+
+* `UP`, `TAB`, `CTRL+K`: move up.
+* `DOWN`, `CTRL+J`: move down.
+* `RETURN`, `CTRL+O`, `CTRL+G`: jump to the selected tag.
+* `CTRL+P`: open a preview window for the selected tag.
+* `CTRL+S`: split the window for the selected tag.
+* `ESC`, `CTRL+C`: close *Surfer*.
+* `CTRL+U`: clear the current search.
+
+Rememberer that when you jump to a tag you can easily jump back to the previous
+position with `CTRL+T`, as you would normally do in Vim.
+
+------------------------------------------------------------------------------
+2.1. Search scope                                        *surfer-search-scope*
+
+Searches are not limited to the current session. You can narrow or widen the
+search scope using modifiers. A modifier is simply a special letter that you
+prepend to your search query. Below is list of all available modifiers:
+
+    * `%`: this modifier narrows the search scope to the current buffer.
+
+    *`#`: this modifier widens the search scope to all files of the current
+    project. Note that a project root is assumed to be the one that contains
+    any of the file or directory names listed in |'surfer_root_markers'|.
+
+Note that project-wide search is still very inefficient and has to be
+considered still an experimental feature.
+
+
+==============================================================================
+3. Commands                                                  *surfer-commands*
+
+
+------------------------------------------------------------------------------
+:Surf                                                                  *Surf*
+
+This command opens Surfer. See the 'Usage' section for how to interact with the
+search results list.
+
+
+==============================================================================
+4. Options                                                    *surfer-options*
+
+
+------------------------------------------------------------------------------
+                                                          *'surfer_ctags_prg'*
+
+With this option you can set the path of the Ctags executable on your system.
+You usually need to do this only if Surfer is not able to locate the Ctags
+executable by himself.
+
+Default: ""
+
+------------------------------------------------------------------------------
+                                                         *'surfer_ctags_args'*
+
+These are the arguemnts used with |'surfer_ctags_prg'|. This option should
+not be modified.
+
+Default: "-f - --format=2 --excmd=number --sort=yes --fields=nKzmafilmsSt"
+
+------------------------------------------------------------------------------
+                                                         *'surfer_smart_case'*
+
+This option controls the way matching works. When this option is turned on,
+a search is case-insensitive only if you enter the search string in all lower
+case letters.
+
+Default: 1
+
+------------------------------------------------------------------------------
+                                                            *'surfer_exclude'*
+
+With this option tou can set glob patterns that are used to exclude files and
+directories from search results.
+
+Example:
+>
+    let g:surfer_exclude = ["*/[Dd]oc?/*", "*/[Tt]est?/*"]
+<
+
+Default: []
+
+------------------------------------------------------------------------------
+                                                      *'surfer_exclude_kinds'*
+
+With this option you can exclude kinds from search results. To get a list of
+the kinds that Ctags is able to recognize per language, execute
+
+    $ ctags --list-kinds
+
+Note that this option apply only to languages recognized by Exuberant Ctags.
+
+Default: []
+
+------------------------------------------------------------------------------
+                                                       *'surfer_root_markers'*
+
+With this option you can set file and directory names that are used to locate
+the root of the current project.
+
+Note that when you assign a list to `g:surfer_root_markers` the default markers
+won't be replaced but just extended.
+
+Default: ['.git', '.svn', '.hg', '.bzr', '.travis.yml']
+
+------------------------------------------------------------------------------
+                                             *'surfer_buffer_search_modifier'*
+
+With this option you can set the modifier used to narrow the search scope
+to the current buffer.
+
+Default: "%"
+
+------------------------------------------------------------------------------
+                                            *'surfer_project_search_modifier'*
+
+With this option you can set the modifier used to widen the search scope
+to the current project (if one can be found).
+
+Default: "#"
+
+------------------------------------------------------------------------------
+                                                   *'surfer_custom_languages'*
+
+With this option you can add support for languages not supported by Exuberant
+Ctags. See the dedicated section in the documentation to see how to set this
+option.
+
+Default: {}
+
+
+==============================================================================
+5. Appearance                                              *surfer-appearance*
+
+
+------------------------------------------------------------------------------
+                                                        *'surfer_max_results'*
+
+This option controls the maximum number of search results displayed.
+
+Default: 15
+
+------------------------------------------------------------------------------
+                                             *'surfer_current_line_indicator'*
+
+With this option you can set the cahracter/s used by Surfer to indicate the
+currently selected tag.
+
+Default: " > "
+
+------------------------------------------------------------------------------
+                                                        *'surfer_line_format'*
+
+This options controls the format of search results. This option is a list of
+strings and each one can contain at most one special *placeholder* that will be
+substituted with the corresponding value.  When the value is absent, the whole
+list item won't displayed. At the moment the following placeholders are
+available:
+
+    * {file}: the file in which the tag is defined.
+    * {line}: the line of the tag in `{file}`.
+    * {kind}: the kind of the tag.
+    * {class}: the name of the class for which the tag is a member or method.
+
+Example:
+>
+    let g:surfer_line_format = ["{file}", " ({line})", " class: {class}"]
+<
+Default: [" @ {file}"]
+
+------------------------------------------------------------------------------
+                                              *'surfer_tag_file_custom_depth'*
+
+This option controls how the value for the placeholder '{file}' is formatted.
+If the value is greater than zero, the value represent the maximum number of
+container directories displayed in the file path.
+
+Default: -1 (the whole path is displayed)
+
+------------------------------------------------------------------------------
+                                  *'surfer_tag_file_relative_to_project_root'*
+
+When this option is turned on, the value of the placeholder '{file}' is
+displayed relative to the project root, if a root exists. This option ovverride
+|'surfer_tag_file_custom_depth'| when a project root is found.
+
+Default: 1
+
+------------------------------------------------------------------------------
+                                                     *'surfer_no_results_msg'*
+
+With this option you can set the string displayed when no result are found for
+the current search query.
+
+Default: " nothing found..."
+
+------------------------------------------------------------------------------
+                                                             *'surfer_prompt'*
+
+With this option you can customize the prompt appearance.
+
+Default: " @ "
+
+------------------------------------------------------------------------------
+                                                       *'surfer_prompt_color'*
+
+This option controls the color of the Surfer prompt. As value, you can use
+either a predefined color group or a complete color definition. Set this option
+to an empty string if you want no color.
+
+Examples
+>
+    # example 1
+    let g:surfer_prompt_color = "String"
+
+    # example 2
+    let g:surfer_prompt_color = "guifg=#ff00ff"
+<
+Default: ""
+
+------------------------------------------------------------------------------
+                                                        *'surfer_shade_color'*
+
+With this option you can set the color everything except the tag name and the
+current line indicator.  As value, you can use either a predefined color group
+or a complete color definition.  Set this option to an empty string if you want
+no color.
+
+Examples:
+>
+    # example 1
+    let g:surfer_shade_color = "String"
+
+    # example 2
+    let g:surfer_shade_color = "guifg=#cccccc guibg=#000000"
+<
+Default: 'Comment'
+
+------------------------------------------------------------------------------
+                                                 *'surfer_shade_color_darkbg'*
+
+This option behaves as the |'surfer_shade_color'| option but it's used when the
+current background is dark (&backgroud == "dark").
+
+See the |'surfer_shade_color'| option for examples.
+
+Default: ..the value of |'surfer_shade_color'|
+
+------------------------------------------------------------------------------
+                                                      *'surfer_matches_color'*
+
+With this option you can set the color for matching letters in tag names. As
+value, you can use either a predefined color group or a complete color
+definition.  Set this option to an empty string if you want no color.
+
+Examples:
+>
+    # example 1
+    let g:surfer_matches_color = "WarningMsg"
+
+    # example 2
+    let g:surfer_matches_color = "guifg=#ff0000"
+<
+Default: 'WarningMsg'
+
+------------------------------------------------------------------------------
+                                               *'surfer_matches_color_darkbg'*
+
+This option behaves as the |'surfer_matches_color'| option but it's used when
+the current background is dark (&backgroud == "dark").
+
+See the |'surfer_matches_color'| option for examples.
+
+Default: ..the value of |'surfer_matches_color'|
+
+------------------------------------------------------------------------------
+#### g:surfer\_visual\_kinds
+
+When this option is turned on, a colored square (or anything you set with `g:surfer_visual_kinds_shape`)
+is displayed before each tag name to indicate the kind of the tag.
+
+Default: `1`
+
+------------------------------------------------------------------------------
+#### g:surfer\_visual\_kinds\_shape
+
+With this option you can set a custom character to be used when the option `g:surfer_visual_kinds`
+is turned on.
+
+Default: `"\uFFED"`
+
+------------------------------------------------------------------------------
+#### g:surfer\_visual\_kinds\_colors
+
+With this option you can customize the color of '|surfer_visual_kinds_shape'|
+for each kind when the option |'surfer_visual_kinds'| is turned on. (to get
+a list of what kinds can be recognized by Ctags execute $ ctags --list-kinds).
+As value, you can use either a predefined color group or a complete color
+definition.
+
+Note that when you want to change these colors you need to assign to
+|'surfer_visual_kinds_colors'| a dictionary with just the kinds you want to
+update or add.
+
+Default:
+>
+    {
+      "interface": "Repeat",
+      "class": "Repeat",
+      "member": "Function",
+      "method": "Function",
+      "function": "Function",
+      "type": "Type",
+      "variable": "Conditional",
+      "constant": "Conditional",
+      "field": "String",
+      "property": "String"
+    }
+<
+
+==============================================================================
+6. Languages support                                *surfer-languages-support*
+
+Exuberant Ctags only supports a limited set of languages ($ ctags --list-languages).
+If you want to add support for a new language there are mainly two methods for
+doing this.
+
+------------------------------------------------------------------------------
+6.1 Method 1
+
+The first method relies directly on Ctags and its extending capabilities. It
+just requires you to add some lines to the file $HOME/.ctags and you are
+done. If you search the web you'll certainly find what you need for your
+language.
+
+Check the web page at http://ctags.sourceforge.net/EXTENDING.html for further
+information about how to integrate custom languages in Exuberant Ctags.
+
+------------------------------------------------------------------------------
+6.2 Method 2
+
+If you want to rely on an external Ctags-compatible tag generator for your
+language, Surfer provides the `g:surfer_custom_languages` option to do this.
+Setting this option is better explained with an example.
+
+With the following example we are going to add support for the Go language with
+the help of gotags (https://github.com/jstemmer/gotags), a ctags-compatible
+tag generator for Go.
+>
+    let g:surfer_custom_languages = {
+        \ "go": {
+            \ "ctags_prg": "/usr/local/bin/gotags",
+            \ "ctags_args": "-silent -sort",
+            \ "kinds_map": {
+                \ 'p': 'package', 'i': 'import', 'c': 'constant', 'v': 'variable',
+                \ 't': 'type', 'n': 'interface', 'w': 'field','e': 'embedded',
+                \ 'm': 'method', 'r': 'constructor', 'f': 'function'},
+            \ "exclude_kinds": ["variable", "constant"],
+            \ "extensions": [".go"]
+        \ },
+    \ }
+<
+As you can see from the example above, adding support for a custom language
+requires you to use a unique filetype name, along with other mandatory
+information, such as the executable of the Ctags-compatible tag generator, its
+arguments and the extensions of the files for which you want to use the
+specified tag generator.
+
+With the 'ctags_prg' and 'ctags_args' keys you can set the path of custom
+Ctags program and its arguments respectively. In order to make things work
+you have to be sure that the output of the custom 'ctags-compatible' program is
+will be 'sorted' and redirected to 'stdout', so you may need to set the
+arguments accordingly.
+
+Setting the 'extensions' key is paramount. This is a list of file extensions
+used for the files for which you to used the custom Ctags program.
+
+With the 'exclude_kinds' key you can set exclusion rules based on the kind of
+the tag. For example, the code above will exclude all tags with the kind
+'constant' or 'variable' from search results for tags generated with the custom
+Ctags program. Note that this override the global option
+|'surfer_exclude_kinds'|.
+
+Setting the 'kinds_map' key may be required when your custom Ctags prgram
+displays only single letters for the 'kind' field and you want more readable
+names.
+
+==============================================================================
+7. Changelog                                                *surfer-changelog*
+
+2.0 (2013-12-27)
+
+    * Improved reliability and performace.
+    * Add visual kinds and related options.
+    * Add possibility to exclude files and directories from search results.
+    * Add possibility to exclude from search results certain kinds.
+    * Various bugfixes.
+
+1.0.1 (2013-08-31)
+
+    * Fix tag search with multiple filetypes.
+
+1.0 (2013-08-22)
+
+    * First release.
+
+
+==============================================================================
+9. About                                                        *surfer-about*
+
+Author: Giacomo Comitti
+Contributors: https://github.com/gcmt/surfer.vim/contributors
+Git repository: https://github.com/gcmt/surfer.vim
+
+
+==============================================================================
+9. License                                                    *surfer-license*
+
+Copyright (c) 2013 Giacomo Comitti
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
