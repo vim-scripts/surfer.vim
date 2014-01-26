@@ -1,7 +1,12 @@
 /*
  * searchmodule.c
  *
- * C port of the module `surfer.search.search`.
+ * C module extension for better search performances (faster implementation
+ * of the module `surfer.search.search`)
+ *
+ * NOTE: each time this module is improved, the `version` constant MUST be
+ * incremented by 1. The vim variable `latest_extension_version` in the file
+ * `../autoload/surfer.vim` MUST be updated as well.
  *
  */
 
@@ -10,6 +15,9 @@
 #if PY_MAJOR_VERSION < 3
     #define PyLong_AsLong PyInt_AsLong
 #endif
+
+
+const long version = 2;
 
 
 static char py_match_doc[] = "To search for `needle` in `haystack`.\n"
@@ -21,14 +29,12 @@ static char py_match_doc[] = "To search for `needle` in `haystack`.\n"
 static PyObject *
 py_match(PyObject *self, PyObject *args)
 {
-    const char *needle;
-    const int needle_len;
-    const char *haystack;
-    const int haystack_len;
+    const Py_UNICODE *needle, *haystack;
+    const int needle_len, haystack_len;
     const int smart_case;
     int i, j, k;
 
-    if (!PyArg_ParseTuple(args, "s#s#i",
+    if (!PyArg_ParseTuple(args, "u#u#i",
             &needle, &needle_len, &haystack, &haystack_len, &smart_case))
         return NULL;
 
@@ -38,28 +44,24 @@ py_match(PyObject *self, PyObject *args)
 
     // If `haystack` has only uppercase characters then it makes no sense
     // to treat an uppercase letter as a word-boundary character
-    int uppercase_is_word_boundary = 0;
-    for (i = 0; i < haystack_len; i++) {
-        if (haystack[i] >= 97 && haystack[i] <= 122)
-            // non-uppercase letter is found
-            uppercase_is_word_boundary = 1;
-    }
+    int uppercase_is_word_boundary = !_isupper(haystack, haystack_len);
 
-    // Initialize the return values
+    // Initialize return values
     PyObject *best_positions = Py_BuildValue("()");
     float best_similarity = -1;
 
-    // Utilities variables
-    PyObject *needle_pyobj = Py_BuildValue("s", needle);  // new ref
-    Py_ssize_t needle_pyobj_len = PySequence_Length(needle_pyobj);
-
-    // Declarations
-    PyObject *matcher, *fork;
-    PyObject *consumed, *positions, *boundaries;
+    int cond, cond1, cond2;
     int needle_idx;
+    Py_UNICODE c, prev;
+    Py_UNICODE *_ch;
+    PyObject *ch;
+    PyObject *pos;
+    PyObject *fork, *matcher, *matchers;
+    PyObject *consumed, *positions, *boundaries;
+    PyObject *needle_obj = PyUnicode_FromUnicode(needle, needle_len);  // new ref XXX
 
     // `matchers` keeps track of all possible matches of `needle` in `haystack`
-    PyObject *matchers = PyList_New(1);  // new ref
+    matchers = PyList_New(1);  // new ref
 
     // Add the first matcher
     matcher = PyDict_New();  // new ref
@@ -67,15 +69,14 @@ py_match(PyObject *self, PyObject *args)
     PyDict_SetItemString(matcher, "consumed", PyList_New(0));
     PyDict_SetItemString(matcher, "boundaries", PyList_New(0));
     PyDict_SetItemString(matcher, "positions", PyList_New(0));
-    // Note: PyList_SetItem don't increment the reference count
-    PyList_SetItem(matchers, 0, matcher);
+    PyList_SetItem(matchers, 0, matcher);  // PyList_SetItem don't increment the reference count
 
     for (i = 0; i < haystack_len; i++) {
 
-        // create forks of current matches if needed
+        // Create forks
 
-        Py_ssize_t matchers_len = PyList_Size(matchers);
-        for (j = 0; j < matchers_len; j++) {
+        /*assert(PyList_Check(matchers));*/
+        for (j = 0; j < PyList_Size(matchers); j++) {
 
             // get matchers[j] and its values
             matcher = PyList_GetItem(matchers, j);
@@ -87,19 +88,22 @@ py_match(PyObject *self, PyObject *args)
             boundaries = PyDict_GetItemString(matcher, "boundaries");
             /*assert(PyList_Check(boundaries));*/
 
-            // Check if the current character in `haystack` has been matched
-            // before by matchers[j]. If so, we crate a fork of matcher[j].
-            int c;
+            // Check if `haystack[i]` has been matched before by matchers[j].
+            // If this is the case we crate a fork of matcher[j].
+
             int idx = -1;
             for (k = 0; k < PyList_Size(consumed); k++) {
-                c = PyLong_AsLong(PyList_GetItem(consumed, k));
-                if (tolower(haystack[i]) == c) {
+                c = PyUnicode_AsUnicode(PyList_GetItem(consumed, k))[0]; // XXX
+                /*assert(PyUnicode_Check(c));*/
+                if (Py_UNICODE_TOLOWER(haystack[i]) == c) {
                     idx = k;
                     break;
                 }
             }
+
             if (idx >= 0) {
-                PyObject *slice = PySequence_GetSlice(needle_pyobj, idx, needle_pyobj_len);  // new ref
+                PyObject *slice = PySequence_GetSlice(needle_obj, idx, needle_len);  // new ref
+                /*assert(PySequence_Check(slice));*/
                 // The slice contains all characters that remains to be matched
                 // by this possible fork in `haystack`. If there is room for
                 // this remaining characters to be matched in `haystack` then
@@ -113,42 +117,45 @@ py_match(PyObject *self, PyObject *args)
                     PyDict_SetItemString(fork, "boundaries", PySequence_GetSlice(boundaries, 0, idx));
                     PyDict_SetItemString(fork, "positions", PySequence_GetSlice(positions, 0, idx));
                     // append the new fork to matchers pool
-                    PyList_Append(matchers, fork);  // PyList_append increment the ref counter
+                    PyList_Append(matchers, fork);  // PyList_Append increment the ref counter
                     Py_DECREF(fork);
                 }
                 Py_DECREF(slice);
             }
         }
 
-        // update each matcher
+        // Update each matcher
 
-        int cond;
-        PyObject *pos, *c;
-
+        /*assert(PyList_Check(matchers));*/
         for (j = 0; j < PyList_Size(matchers); j++) {
 
             matcher = PyList_GetItem(matchers, j);  // borrowed ref
             /*assert(PyDict_Check(matcher));*/
-            needle_idx = PyLong_AsLong(PyDict_GetItemString(matcher, "needle_idx"));
             consumed = PyDict_GetItemString(matcher, "consumed");
             /*assert(PyList_Check(consumed));*/
             positions = PyDict_GetItemString(matcher, "positions");
             /*assert(PyList_Check(positions));*/
             boundaries = PyDict_GetItemString(matcher, "boundaries");
             /*assert(PyList_Check(boundaries));*/
+            needle_idx = PyLong_AsLong(PyDict_GetItemString(matcher, "needle_idx"));
 
             if (needle_idx == needle_len)
                 continue;
 
-            if (smart_case && isupper(needle[needle_idx]))
+            if (smart_case && Py_UNICODE_ISUPPER(needle[needle_idx]))
                 cond = haystack[i] == needle[needle_idx];
             else
-                cond = tolower(haystack[i]) == tolower(needle[needle_idx]);
+                cond = Py_UNICODE_TOLOWER(haystack[i]) == Py_UNICODE_TOLOWER(needle[needle_idx]);
 
             if (cond) {
 
-                if ((uppercase_is_word_boundary && isupper(haystack[i])) || i == 0 ||
-                    (i > 0 && (haystack[i-1] == '-' || haystack[i-1] == '_'))) {
+                prev = haystack[i-1];
+                cond1 = uppercase_is_word_boundary && Py_UNICODE_ISUPPER(prev);
+                cond2 = 0;
+                if (i > 0)
+                    cond2 = prev == (Py_UNICODE)('_') || prev == (Py_UNICODE)('-') || Py_UNICODE_ISSPACE(prev);
+
+                if (i == 0 || cond1 || cond2) {
                     pos = Py_BuildValue("i", 1);  // new ref
                     PyList_Append(boundaries, pos);
                 } else {
@@ -161,9 +168,11 @@ py_match(PyObject *self, PyObject *args)
                 PyList_Append(positions, pos);
                 Py_DECREF(pos);
 
-                c = Py_BuildValue("i", tolower(needle[needle_idx]));  // new ref
-                PyList_Append(consumed, c);
-                Py_DECREF(c);
+                ch = PyUnicode_FromString(" ");  // new ref
+                _ch = PyUnicode_AS_UNICODE(ch);
+                _ch[0] = Py_UNICODE_TOLOWER(needle[needle_idx]);
+                PyList_Append(consumed, ch);
+                Py_DECREF(ch);
 
                 needle_idx++;
                 PyDict_SetItemString(matcher, "needle_idx", Py_BuildValue("i", needle_idx));
@@ -174,24 +183,25 @@ py_match(PyObject *self, PyObject *args)
                         if (PyLong_AsLong(PyList_GetItem(boundaries, k)))
                             boundaries_count++;
                     }
-                    float s = similarity(haystack_len, positions, boundaries_count);
+                    float s = _similarity(haystack_len, positions, boundaries_count);
                     if (best_similarity < 0 || s < best_similarity) {
                         best_similarity = s;
-                        Py_DECREF(best_positions);  // TODO: correct right ??
+                        Py_DECREF(best_positions);
                         best_positions = PySequence_Tuple(positions);
                     }
                 }
             }
         }
     }
-    Py_DECREF(needle_pyobj);
+
+    Py_DECREF(needle_obj);
     Py_DECREF(matchers);
     return Py_BuildValue("(f,N)", best_similarity, best_positions);
 }
 
 
 float
-similarity(int haystack_len, PyObject *positions, int boundaries_count)
+_similarity(int haystack_len, PyObject *positions, int boundaries_count)
 {
     /*assert(PyList_Check(positions));*/
 
@@ -202,6 +212,7 @@ similarity(int haystack_len, PyObject *positions, int boundaries_count)
     int n = 0;
     float diffs_sum = .0;
     int contiguous_sets = 0;
+    int positions_sum = 0;
 
     // Generate all `positions` combinations for k = 2 and
     // sum the absolute difference computed for each one.
@@ -210,6 +221,8 @@ similarity(int haystack_len, PyObject *positions, int boundaries_count)
     for (i = 0; i < positions_len; i++) {
 
         x1 = PyFloat_AsDouble(PyList_GetItem(positions, i));
+
+        positions_sum += x1;
 
         if (i > 0) {
             prev = PyFloat_AsDouble(PyList_GetItem(positions, i-1));
@@ -226,14 +239,29 @@ similarity(int haystack_len, PyObject *positions, int boundaries_count)
         }
     }
 
-    float first_pos = PyFloat_AsDouble(PyList_GetItem(positions, 0));
+    float gravity = positions_sum/positions_len;
     float compactness = .0;
-
     if (n > 0)
         compactness = diffs_sum/n;
 
-    return first_pos + compactness + contiguous_sets - boundaries_count + 1;
+    return gravity + compactness + contiguous_sets - boundaries_count*2.0;
 }
+
+
+int
+_isupper(const Py_UNICODE *c, int len)
+{
+    int i;
+    for (i = 0; i < len; i++) {
+        if (Py_UNICODE_ISLOWER(c[i]))
+            return 0;
+    }
+    return 1;
+}
+
+
+/* ================================= INIT ================================== */
+
 
 static PyMethodDef searchmethods[] = {
     {"match", py_match, METH_VARARGS, py_match_doc},
@@ -252,14 +280,19 @@ static struct PyModuleDef searchmodule = {
 
 PyMODINIT_FUNC
 PyInit_search(void) {
-    return PyModule_Create(&searchmodule);
+    PyObject *mod;
+    mod = PyModule_Create(&searchmodule);
+    PyModule_AddIntConstant(mod, "__version__", version);
+    return mod;
 }
 
 #else
 
 PyMODINIT_FUNC
 initsearch(void) {
-    Py_InitModule("search", searchmethods);
+    PyObject *mod;
+    mod = Py_InitModule("search", searchmethods);
+    PyModule_AddIntConstant(mod, "__version__", version);
 }
 
 #endif

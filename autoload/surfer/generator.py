@@ -8,14 +8,13 @@ generating tags.
 """
 
 import os
-import vim
 import shlex
 import tempfile
 import subprocess
-from os.path import splitext
-from fnmatch import fnmatchcase
+from fnmatch import fnmatch
 from itertools import imap, ifilter
 from collections import defaultdict
+from os.path import splitext, exists
 
 from surfer.utils import v
 from surfer.utils import misc
@@ -56,7 +55,7 @@ class TagsGenerator:
         for filetype, files in groups.items():
 
             prg, args, kinds_map, exclude_kinds = self._filetype_data(filetype)
-            if not os.path.exists(prg):
+            if not exists(prg):
                 raise ex.SurferException(
                     "Error: The program '{}' does not exists or cannot be "
                     "found in your $PATH".format(prg))
@@ -75,16 +74,16 @@ class TagsGenerator:
 
     def _build(self, prg, args, files):
         """To generate tags."""
-        files = imap(lambda f: '"{}"'.format(f), files)
-        cmd = "{} {} {}".format(prg, args, " ".join(files))
-        cmd = cmd if os.name != 'nt' else cmd.replace("\\", "\\\\")
+        files = imap(lambda f: u'"{}"'.format(f), files)
+        cmd = u"{} {} {}".format(prg, args, u" ".join(files))
+        cmd = cmd if os.name != 'nt' else cmd.replace(u"\\", u"\\\\")
         startupinfo = None
         if os.name == 'nt':
             # On MS Windows hide the console window when launching a subprocess
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         try:
-            ctags = subprocess.Popen(shlex.split(cmd), universal_newlines=True,
+            ctags = subprocess.Popen(shlex.split(cmd.encode("utf8")), universal_newlines=True,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     startupinfo=startupinfo)
             return ctags.communicate()
@@ -146,11 +145,11 @@ class TagsGenerator:
         if curr_bufname and modifier == settings.get("buffer_search_modifier"):
             files = [curr_bufname]
         elif modifier == settings.get("project_search_modifier"):
-            files = self.plug.services.project.get_files()
+            files = self.plug.project.get_files()
         else:
             files = v.buffers()
         exclude = settings.get("exclude")
-        fn = lambda path: not any(fnmatchcase(path, patt) for patt in exclude)
+        fn = lambda path: not any(fnmatch(path, patt) for patt in exclude)
         return filter(fn, files)
 
     def _filetype_data(self, filetype):
@@ -192,14 +191,14 @@ class TagsGenerator:
         """To generate a new temporary tagfile and update the vim
         `tags` option."""
         tagfile = tempfile.NamedTemporaryFile(delete=False)
-        vim.command("set tags+={}".format(tagfile.name))
+        v.exe(u"set tags+={}".format(tagfile.name))
         self.old_tagfiles.append(tagfile.name)
         return tagfile
 
     def _remove_tagfiles(self):
         """To delete all previously created tagfiles."""
         for tagfile in self.old_tagfiles:
-            vim.command("set tags-={}".format(tagfile))
+            v.exe(u"set tags-={}".format(tagfile))
             try:
                 os.remove(tagfile)
             except OSError:

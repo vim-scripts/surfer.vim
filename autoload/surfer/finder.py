@@ -7,12 +7,8 @@ This module defines the TagsFinder class. This class is responsible for
 searching tags.
 """
 
-import vim
-from fnmatch import fnmatchcase
 from operator import itemgetter
 
-from surfer.utils import v
-from surfer.utils import misc
 from surfer.utils import settings
 
 try:
@@ -40,7 +36,6 @@ class TagsFinder:
     def _find(self, query, tags, max_results):
         """To find all matching tags for the given `query`."""
         matches = []
-        query = query.encode("utf-8")
         smart_case = settings.get("smart_case", int)
 
         for tag in tags:
@@ -68,4 +63,4 @@ class TagsFinder:
         pmod = settings.get("project_search_modifier")
         if query and query[0] in (pmod, bmod):
             return query[0], query[1:]
-        return "", query
+        return u"", query

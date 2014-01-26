@@ -5,6 +5,12 @@ This plugin provides a nice interface for navigating code built on top of Ctags.
 
 ![Screenshot](_assets/screenshot.png "Surfer in action.")
 
+
+## Requirements
+
+Surfer requires Vim 7.3+ compiled with Python 2.x support (2.6+).
+
+
 ## Installation
 
 ### Step 1
@@ -162,19 +168,20 @@ Default: `15`
 
 With this option you can set the cahracter/s used by Surfer to indicate the currently selected tag.
 
-Default: `" > "`
+Default: `" "`
 
 #### g:surfer\_line\_format
 
 This options controls the format of search results. This option is a list of strings and each one
 can contain at most one special *placeholder* that will be substituted with the corresponding value.
-When the value is absent, the whole list item won't displayed. At the moment the following
-placeholders are available:
+When the value is absent, the whole list item won't displayed. Available placeholders vary across
+different languages but common placeholders include:
 
 * `{file}`: the file in which the tag is defined.
 * `{line}`: the line of the tag in `{file}`.
 * `{kind}`: the kind of the tag.
 * `{class}`: the name of the class for which the tag is a member or method.
+* `{language}`: the language of the file in which tags is defined.
 
 Example:
 

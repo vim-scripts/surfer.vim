@@ -25,9 +25,7 @@ def match(needle, haystack, smart_case):
 
     # If `haystack` has only uppercase characters then it makes no sense
     # to treat an uppercase letter as a word-boundary character
-    uppercase_is_word_boundary = True
-    if haystack.isupper():
-        uppercase_is_word_boundary = False
+    uppercase_is_word_boundary = not haystack.isupper()
 
     # `matchers` keep track of all possible matches of `needle`
     # along `haystack`
@@ -108,10 +106,13 @@ def similarity(haystack_len, positions, boundaries_count):
     n = 0
     diffs_sum = 0
     contiguous_sets = 0
+    positions_sum = 0
 
     # Generate all `positions` combinations for k = 2
     positions_len = len(positions)
     for i in range(positions_len):
+
+        positions_sum += positions[i]
 
         if i > 0 and positions[i-1] != positions[i] - 1:
             contiguous_sets += 1
@@ -121,5 +122,6 @@ def similarity(haystack_len, positions, boundaries_count):
                 diffs_sum += abs(positions[i]-positions[j])
                 n += 1
 
+    gravity = positions_sum/positions_len
     compactness = diffs_sum/n if n > 0 else 0
-    return positions[0] + compactness + contiguous_sets - boundaries_count + 1
+    return gravity + compactness + contiguous_sets - boundaries_count*1.5

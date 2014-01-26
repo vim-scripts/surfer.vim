@@ -7,7 +7,7 @@ This module defines the Input class that is responsible for handling
 the input coming from the user via the command line.
 """
 
-import vim
+from surfer.utils import v
 
 
 class Input:
@@ -23,91 +23,80 @@ class Input:
         self.CHAR = ""
         self.F1 = self.F2 = self.F3 = self.F4 = self.F5 = self.F6 = None
         self.F7 = self.F8 = self.F9 = self.F10 = self.F11 = self.F12 = None
-        vim.command("let g:_surfer_char = ''")
-        vim.command("let g:_surfer_interrupt = 0")
+
+    def _nr2char(self, nr):
+        return v.call("nr2char({})".format(nr))
 
     def get(self):
         """To read a key pressed by the user."""
         self._reset()
 
-        vim.command("""
-            try |
-             let g:_surfer_char = strtrans(getchar()) |
-            catch |
-             let g:_surfer_interrupt = 1 |
-            endtry
-        """)
-
-        if vim.eval('g:_surfer_interrupt') == '1':  # Ctrl + c
+        try:
+            raw_char = v.call('strtrans(getchar())')
+        except KeyboardInterrupt:
+            # This exception is triggered only on Windows when the user
+            # press CTRL+C
+            self.CHAR = 'c'
             self.CTRL = True
-            self.CHAR = unicode("c", "utf-8")
             self.INTERRUPT = True
             return
 
-        raw_char = vim.eval('g:_surfer_char')
-
-        # only with mac os
-        # 'cmd' key has been pressed
-        if raw_char.startswith("<80><fc><80>"):
-            self.MAC_CMD = True
-            char = raw_char.replace("<80><fc><80>", "")
-            nr = vim.eval("char2nr('{}')".format(char))
-        else:
-            # we use str2nr in order to get a negative number as a result if
-            # the user press a special key such as backspace
-            nr = int(vim.eval("str2nr('{}')".format(raw_char)))
+        nr = v.call(u"str2nr('{}')".format(raw_char))
+        # `nr` == 0 when the user press backspace, an arrow key, F*, etc
 
         if nr != 0:
 
-            if nr == 13:
+            if nr == 13:  # same as Ctrl+m
                 self.RETURN = True
             elif nr == 27:
                 self.ESC = True
-            elif nr == 9:  # same as Ctrl+i.. miss something?
+            elif nr == 9:  # same as Ctrl+i
                 self.TAB = True
             elif 1 <= nr <= 26:
                 self.CTRL = True
-                self.CHAR = vim.eval("nr2char({})".format(nr + 96)).decode('utf-8')
+                self.CHAR = self._nr2char(nr+96)
+                if self.CHAR == 'c':
+                    self.INTERRUPT = True
             else:
-                self.CHAR = vim.eval("nr2char({})".format(nr)).decode('utf-8')
+                self.CHAR = self._nr2char(nr)
 
         else:
 
-            c = raw_char.replace("<80>", "")
-            if c == 'kl':
+            if 'kl' in raw_char:
                 self.LEFT = True
-            elif c == 'kr':
+            elif 'kr' in raw_char:
                 self.RIGHT = True
-            elif c == 'ku':
+            elif 'ku' in raw_char:
                 self.UP = True
-            elif c == 'kd':
+            elif 'kd' in raw_char:
                 self.DOWN = True
-            elif c == 'kb':  # backspace
+            elif 'kb' in raw_char:
                 self.BS = True
-            elif c == 'k1':
+            elif 'k1' in raw_char:
                 self.F1 = True
-            elif c == 'k2':
+            elif 'k2' in raw_char:
                 self.F2 = True
-            elif c == 'k3':
+            elif 'k3' in raw_char:
                 self.F3 = True
-            elif c == 'k4':
+            elif 'k4' in raw_char:
                 self.F4 = True
-            elif c == 'k5':
+            elif 'k5' in raw_char:
                 self.F5 = True
-            elif c == 'k6':
+            elif 'k6' in raw_char:
                 self.F6 = True
-            elif c == 'k7':
+            elif 'k7' in raw_char:
                 self.F7 = True
-            elif c == 'k8':
+            elif 'k8' in raw_char:
                 self.F8 = True
-            elif c == 'k9':
+            elif 'k9' in raw_char:
                 self.F9 = True
-            elif c == 'k10':
+            elif 'k10' in raw_char:
                 self.F10 = True
-            elif c == 'k11':
+            elif 'k11' in raw_char:
                 self.F11 = True
-            elif c == 'k12':
+            elif 'k12' in raw_char:
                 self.F12 = True
             else:
                 # mouse clicks or scrolls
                 self.MOUSE = True
+

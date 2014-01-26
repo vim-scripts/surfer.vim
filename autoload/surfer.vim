@@ -36,11 +36,45 @@ endfu
 " Init
 " ----------------------------------------------------------------------------
 
-let s:current_folder = expand("<sfile>:p:h")
+let s:curr_folder = expand("<sfile>:p:h")
 
-let g:surfer_ctags_prg = surfer#find_ctags_prg(g:surfer_ctags_prg)
+" this variable MUST match the `version` constant in the extension module
+" `surfer.ext.search` so that we can tell the user when he needs to recompile
+" the search component.
+let s:latest_extension_version = 2
+let s:extension_exists = filereadable(s:curr_folder."/surfer/ext/search.so")
+
+" On non-Windows plarforms, tell the user that faster searches can be possible
+" by compiling the C extension module.
+if !has("win32") && !s:extension_exists
+    echohl WarningMsg |
+        \ echomsg "[surfer] For better performances go to the plugin root"
+                \ "directory and excute `./install.sh" |
+        \ echohl None
+endif
+
 py import vim, sys
-py sys.path.insert(0, vim.eval("s:current_folder"))
+py sys.path.insert(0, vim.eval("s:curr_folder"))
+
+" Check if the user is using the latest version of the C extension module
+if s:extension_exists
+    py import surfer.ext.search
+    py vim.command("let s:curr_version = {}".format(
+        \ getattr(surfer.ext.search, "__version__", -1)))
+    if s:curr_version != s:latest_extension_version
+        echohl WarningMsg |
+            \ echomsg "[surfer] The search component has been updated, you"
+                    \ "need to recompile it. Go to the plugin root directory"
+                    \ "and excute `./install.sh`" |
+            \ echohl None
+        let g:_surfer_stay_silent = 1
+    endif
+endif
+
+" Discover the ctags program
+let g:surfer_ctags_prg = surfer#find_ctags_prg(g:surfer_ctags_prg)
+
+" Instantiate the plugin object
 py import surfer.core
 py _surfer = surfer.core.Surfer()
 
@@ -49,7 +83,11 @@ py _surfer = surfer.core.Surfer()
 " ----------------------------------------------------------------------------
 
 fu! surfer#Open()
-    py _surfer.Open()
+    if get(g:, "_surfer_stay_silent", 0)
+        let g:_surfer_stay_silent = 0
+    else
+        py _surfer.Open()
+    endif
 endfu
 
 
@@ -63,7 +101,7 @@ augroup surfer
     au Colorscheme * py _surfer.ui.setup_colors()
     au VimLeave * py _surfer.close()
 
-    au BufEnter * py _surfer.services.project.update_project_root()
+    au BufEnter * py _surfer.project.update_root()
     au BufWritePost * py _surfer.generator.rebuild_tags = True
     au BufDelete,BufNew * if empty(&buftype) | exec "py _surfer.generator.rebuild_tags = True" | endif
 

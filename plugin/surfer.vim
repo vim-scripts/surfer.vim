@@ -4,7 +4,6 @@
 " Mantainer: Giacomo Comitti (https://github.com/gcmt)
 " Url: https://github.com/gcmt/vim-surfer
 " License: MIT
-" Last Changed: 24 Dec 2013
 " ============================================================================
 
 
@@ -97,8 +96,11 @@ let g:surfer_prompt_color =
 let g:surfer_prompt_color_darkbg =
     \ get(g:, "surfer_prompt_color_darkbg", g:surfer_prompt_color)
 
+let g:surfer_cursorline =
+    \ get(g:, "surfer_cursorline", 1)
+
 let g:surfer_current_line_indicator =
-    \ get(g:, "surfer_current_line_indicator", " > ")
+    \ get(g:, "surfer_current_line_indicator", " ")
 
 let g:surfer_line_format =
     \ get(g:, "surfer_line_format", [" @ {file}"])
@@ -128,8 +130,7 @@ let g:surfer_visual_kinds =
     \ get(g:, "surfer_visual_kinds", 1)
 
 let g:surfer_visual_kinds_shape =
-    \ get(g:, "surfer_visual_kinds_shape", "\uFFED")
-    " \u25a0 (little square) - \u25cf (circle)
+    \ get(g:, "surfer_visual_kinds_shape", "\u2022") . " "
 
 let g:surfer_visual_kinds_colors =
     \ extend({
